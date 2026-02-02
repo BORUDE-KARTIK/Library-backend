@@ -1,0 +1,5 @@
+node_modules/
+
+# Removing The Config Folder As it Contains The Database Credentials
+Config/
+
