@@ -30,15 +30,17 @@ class BooksModel {
   //This is to get the Total Issued Books Count only where the status is issued or due
   getTotalIssuedBooksCount = async () => {
     const q = `SELECT COUNT(*) AS issued_books FROM issued_books where status = 'issued' OR status ='due'`;
-    const data = await pool.query(q);
-    return data[0];
+    const [data] = await pool.query(q);
+    console.log("Total Issued Books Data", data[0].issued_books);
+    return data[0].issued_books;
   };
 
   //This is to get the All Time Issued Books Count
   getAllIssuedCount = async () => {
     const q = "SELECT COUNT(*) AS all_time_issue FROM issued_books";
-    const data = await pool.query(q);
-  return data[0];
+    const [data] = await pool.query(q);
+    console.log("All Time Issued Books Data", data[0].all_time_issue);
+    return data[0].all_time_issue;
   };
 
   //this is to add the Book
@@ -377,5 +379,67 @@ WHERE ib.status IN ('issued', 'due') AND b.Accession_no = ?`;
       };
     }
   };
+
+  // Delete a book by ID
+  deleteBook = async (id) => {
+    if (!id) {
+      return {
+        success: false,
+        message: "Book ID is required",
+      };
+    }
+
+    // First check if book has any issued/due records
+    const checkQuery = `SELECT COUNT(*) as count FROM issued_books WHERE book_id = ? AND status IN ('issued', 'due')`;
+    const deleteQuery = `DELETE FROM books WHERE id = ?`;
+
+    try {
+      const [checkResult] = await pool.query(checkQuery, [id]);
+      
+      if (checkResult[0].count > 0) {
+        return {
+          success: false,
+          message: "Cannot delete book. It has active issued records.",
+        };
+      }
+
+      const [result] = await pool.query(deleteQuery, [id]);
+
+      if (result.affectedRows === 0) {
+        return {
+          success: false,
+          message: "Book not found",
+        };
+      }
+
+      return {
+        success: true,
+        message: "Book deleted successfully",
+      };
+    } catch (error) {
+      console.log("Error In deleteBook Model:", error);
+      return {
+        success: false,
+        message: error.message || "Failed to delete book",
+      };
+    }
+  };
+
+  getOverdueBooksCount = async ()=>{
+    let q = `SELECT COUNT(*) as count FROM issued_books WHERE status = 'due'`;
+    try {
+      const [result] = await pool.query(q);
+      return {
+        success: true,
+        count: result[0].count
+      };
+    } catch (error) {
+      console.log("Error In getOverdueBooksCount Model:", error);
+      return {
+        success: false,
+        message: error.message || "Failed to get overdue books count",
+      };
+    }
+  }
 }
 module.exports = { BooksModel };

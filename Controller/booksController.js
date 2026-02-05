@@ -6,7 +6,7 @@ const booksModel = new BooksModel();
 const getBooksController = async (req, res) => {
   try {
     const data = await booksModel.getBooks();
-
+    console.log("Data In Controller :::", data);
     return res.status(200).json({
       success: true,
       message: "Books Data",
@@ -41,10 +41,11 @@ const getTitleController = async (req, res) => {
 const getTotalBooksCountController = async (req, res) => {
   try {
     const data = await booksModel.getTotalBooksCount();
+    console.log("Data In Controller :::", data);
     return res.status(200).json({
       success: true,
       message: "Total Count Of the Books",
-      data,
+      data:data[0].total,
     });
   } catch (error) {
     console.log("Error In the getTotalBooksCount() controller ", error);
@@ -128,6 +129,31 @@ const updateBookController = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "DB Error",
+    });
+  }
+};
+
+const getOverdueBooksCountController = async (req, res) => {
+  try {
+    const result = await booksModel.getOverdueBooksCount();
+    console.log("Result ",result)
+    if(result.success){
+      res.status(200).json({
+        success: true,
+        message: "Overdue Books Count",
+        count:result.count
+      });
+    }else{
+      res.status(400).json({
+        success: false,
+        message: result.message,
+      });
+    }
+  } catch (error) {
+    console.log("Error In the getOverdueBooksCountController()", error);
+    res.status(500).json({
+      success: false,
+      message: "Error In DB",
     });
   }
 };
@@ -243,8 +269,8 @@ const issueBookController = async (req, res) => {
   }
 };
 
-  //get all the issued book data to show on the return page in table form 
-  //to show only the issued or the due books
+//get all the issued book data to show on the return page in table form 
+ //to show only the issued or the due books
 const getAllIssuedBooksController = async ( req , res )=>{
   try{
     const data = await booksModel.getAllIssuedBooks();
@@ -333,6 +359,40 @@ const searchBooksController = async (req, res) => {
   }
 };
 
+// Controller for deleting a book
+const deleteBookController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Book ID is required",
+      });
+    }
+
+    const data = await booksModel.deleteBook(id);
+
+    if (data.success) {
+      res.status(200).json({
+        success: true,
+        message: data.message,
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: data.message,
+      });
+    }
+  } catch (error) {
+    console.log("Error In deleteBookController", error);
+    res.status(500).json({
+      success: false,
+      message: "DB Error",
+    });
+  }
+};
+
 module.exports = {
   getBooksController,
   getTitleController,
@@ -346,5 +406,7 @@ module.exports = {
   issueBookController,
   getAllIssuedBooksController,
   getDataOfIssuedBooksController,
-  searchBooksController
+  searchBooksController,
+  deleteBookController,
+  getOverdueBooksCountController
 };
