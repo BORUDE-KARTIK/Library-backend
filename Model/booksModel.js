@@ -65,8 +65,9 @@ class BooksModel {
         \`Cost\`,
         \`Location\`,
         \`Total_copies\`,
-        \`Available_copies\`
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+        \`Available_copies\`,
+        \`created_by\`
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     // Convert empty date strings to null for optional date fields
     const newData = [
       data.Accession_no,
@@ -85,6 +86,7 @@ class BooksModel {
       data.Location,
       data.Total_copies,
       data.Available_copies,
+      data.created_by,
     ];
 
     const result = await pool.query(checkQuery, [data.Accession_no]);
@@ -133,9 +135,11 @@ class BooksModel {
       \`Cost\` = ?,
       \`Location\` = ?,
       \`Total_copies\` = ?,
-      \`Available_copies\` = ?
+      \`Available_copies\` = ?,
+      \`updated_by\` = ?
       WHERE \`id\` = ?`;
-
+    console.log("Book updated_by", book.updated_by);
+    console.log("Book Id", book.id);
     const newData = [
       book.Accession_no,
       book.Title,
@@ -146,13 +150,14 @@ class BooksModel {
       book.Pages,
       book.Language_code,
       book.Bill_no || "NOT PRESENT",
-      book.Bill_date || null, // Convert empty string to NULL for optional date
+      book.Bill_date || null,
       book.Department,
-      book.Purchase_Date || null, // Convert empty string to NULL for optional date
+      book.Purchase_Date || null,
       book.Cost,
       book.Location,
       book.Total_copies,
       book.Available_copies,
+      book.updated_by,
       book.id,
     ];
 
@@ -163,6 +168,7 @@ class BooksModel {
         message: "Book Updated Successfully",
       };
     } catch (error) {
+      console.log("Error In Update Book", error);
       return {
         success: false,
         message: "Update Error In DB",
@@ -171,7 +177,7 @@ class BooksModel {
   };
   //this Function For the Checking the Whether the Book exists or not used in the While
   //Adding the Book To check for its existance
-  // API Calling is done 
+  // API Calling is done
   // This API is Being called in the add-book-page.js at line-40
   isBookExists = async (acc_no) => {
     let q = `SELECT * FROM books where Accession_no =?`;
@@ -263,12 +269,12 @@ class BooksModel {
     }
   };
 
-  //get all the issued book data to show on the return page in table form 
+  //get all the issued book data to show on the return page in table form
   //to show only the issued or the due books
-  //this is also used for the return page where the librarian enters the accession number and auto fills the data 
-  //this API is being called in the getAllIssuedBooks in this function to show the issued book on the return page 
-  getAllIssuedBooks = async () =>{
-       let q = `SELECT 
+  //this is also used for the return page where the librarian enters the accession number and auto fills the data
+  //this API is being called in the getAllIssuedBooks in this function to show the issued book on the return page
+  getAllIssuedBooks = async () => {
+    let q = `SELECT 
     ib.id,
     ib.issue_date,
     ib.actual_return_date,
@@ -285,32 +291,31 @@ INNER JOIN students s ON ib.student_id = s.id
 WHERE ib.status IN ('issued', 'due')`;
     try {
       const [issuedBooks] = await pool.query(q);
-     
-      if(issuedBooks.length == 0){
+
+      if (issuedBooks.length == 0) {
         return {
           success: true,
-          count:issuedBooks.length,
-          message:"No Issued Books Found"
+          count: issuedBooks.length,
+          message: "No Issued Books Found",
         };
       }
       return {
         success: true,
         issuedBooks,
-        count : issuedBooks.length
+        count: issuedBooks.length,
       };
     } catch (error) {
-      console.log("Error In the getAllissuedBooks Model " , error)
-      return{
-        success:false
-      }
-      
+      console.log("Error In the getAllissuedBooks Model ", error);
+      return {
+        success: false,
+      };
     }
-  }
+  };
 
   //this Function is for getting the data to auto fill the fields in the return book page
-  // where the librarian just need to enter the Accession Number And the Data Will Be Auto-filled 
-  //API is being called in the return-page.js File at line-25 in controller  
-  getDataOfIssuedBooks = async (acc_no) =>{
+  // where the librarian just need to enter the Accession Number And the Data Will Be Auto-filled
+  //API is being called in the return-page.js File at line-25 in controller
+  getDataOfIssuedBooks = async (acc_no) => {
     let q = `SELECT 
     ib.id,
     ib.book_id,
@@ -330,12 +335,12 @@ INNER JOIN students s ON ib.student_id = s.id
 WHERE ib.status IN ('issued', 'due') AND b.Accession_no = ?`;
     try {
       const [issuedBooks] = await pool.query(q, [acc_no]);
-      console.log("Issued Books (due/issued)",issuedBooks);
-      console.log("Issued Books (due/issued)",issuedBooks.length);
-      if(issuedBooks.length == 0){
+      console.log("Issued Books (due/issued)", issuedBooks);
+      console.log("Issued Books (due/issued)", issuedBooks.length);
+      if (issuedBooks.length == 0) {
         return {
           success: true,
-          message:"No Issued Books Found"
+          message: "No Issued Books Found",
         };
       }
       return {
@@ -343,13 +348,12 @@ WHERE ib.status IN ('issued', 'due') AND b.Accession_no = ?`;
         issuedBooks,
       };
     } catch (error) {
-      console.log("Error In the getDataOfIssuedBooks Model " , error)
-      return{
-        success:false
-      }
-      
+      console.log("Error In the getDataOfIssuedBooks Model ", error);
+      return {
+        success: false,
+      };
     }
-  }
+  };
 
   //API for searching books by term
   searchBooks = async (term) => {
@@ -357,13 +361,21 @@ WHERE ib.status IN ('issued', 'due') AND b.Accession_no = ?`;
     const search = `%${term}%`;
 
     try {
-      const [books] = await pool.query(q, [search, search, search, search, search, search, search]);
-      
+      const [books] = await pool.query(q, [
+        search,
+        search,
+        search,
+        search,
+        search,
+        search,
+        search,
+      ]);
+
       if (books.length > 0) {
         return {
           success: true,
           data: books,
-          count: books.length
+          count: books.length,
         };
       } else {
         return {
@@ -395,7 +407,7 @@ WHERE ib.status IN ('issued', 'due') AND b.Accession_no = ?`;
 
     try {
       const [checkResult] = await pool.query(checkQuery, [id]);
-      
+
       if (checkResult[0].count > 0) {
         return {
           success: false,
@@ -425,13 +437,13 @@ WHERE ib.status IN ('issued', 'due') AND b.Accession_no = ?`;
     }
   };
 
-  getOverdueBooksCount = async ()=>{
+  getOverdueBooksCount = async () => {
     let q = `SELECT COUNT(*) as count FROM issued_books WHERE status = 'due'`;
     try {
       const [result] = await pool.query(q);
       return {
         success: true,
-        count: result[0].count
+        count: result[0].count,
       };
     } catch (error) {
       console.log("Error In getOverdueBooksCount Model:", error);
@@ -440,6 +452,6 @@ WHERE ib.status IN ('issued', 'due') AND b.Accession_no = ?`;
         message: error.message || "Failed to get overdue books count",
       };
     }
-  }
+  };
 }
 module.exports = { BooksModel };
